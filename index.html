@@ -20,13 +20,13 @@
       <textarea id="text" rows="3" maxlength="500" aria-describedby="text-error"></textarea>
       <p id="text-error" class="error" role="alert"></p>
 
-      <button type="submit">Үлдээх</button>
+      <button id="submit" type="submit">Үлдээх</button>
       <p id="form-error" class="error" role="alert"></p>
     </form>
 
     <h2>Сэтгэгдлүүд <span id="count"></span></h2>
     <ul id="list"></ul>
-    <p class="muted">Сэтгэгдэл зөвхөн энэ төхөөрөмжийн browser-т хадгалагдана.</p>
+    <p id="status" class="muted" role="status"></p>
   </main>
   <script src="app.js"></script>
 </body>

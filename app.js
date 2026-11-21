@@ -1,44 +1,42 @@
-// Зочны дэвтэр — сэтгэгдлийг энэ browser-т (localStorage) хадгална.
+// Зочны дэвтэр — сэтгэгдлийг Supabase-ийн `comments` хүснэгтэд хадгална.
 // AI-аар үүсгэсэн. Өдөр 6-гийн «Хамт хийх» хэсэгт /hyanalt командаар хянуулна.
 
-const STORAGE_KEY = 'zochnii-devter';
+// Supabase-ийн төслийн хаяг ба НИЙТИЙН (anon / publishable) түлхүүр.
+// Нийтийн түлхүүр browser-т байх нь хэвийн — эрхийг хүснэгтийн RLS дүрэм хамгаална (schema.sql).
+// service_role / secret түлхүүрийг энд ХЭЗЭЭ Ч бүү хий.
+const SUPABASE_URL = 'https://cqyakzvqmcpxgaksxrcs.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_MwZW9lIqnf3IPk57jxvAlQ_HgSQMVO6';
+
+const COMMENTS_URL = SUPABASE_URL + '/rest/v1/comments';
 const MAX_NAME = 50;
 const MAX_TEXT = 500;
+const MAX_SHOWN = 200;
 
 const form = document.getElementById('form');
 const nameInput = document.getElementById('name');
 const textInput = document.getElementById('text');
+const submitButton = document.getElementById('submit');
 const nameError = document.getElementById('name-error');
 const textError = document.getElementById('text-error');
 const formError = document.getElementById('form-error');
 const list = document.getElementById('list');
 const count = document.getElementById('count');
+const status = document.getElementById('status');
 
-// Хадгалсан өгөгдөл гэмтсэн эсвэл browser хадгалахыг хориглосон бол хоосон жагсаалт буцаана.
-function load() {
-  try {
-    const entries = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    if (!Array.isArray(entries)) return [];
-    return entries.filter(function (entry) {
-      return entry && typeof entry === 'object';
-    });
-  } catch (error) {
-    return [];
-  }
-}
-
-// Хадгалж чадсан бол true, чадаагүй бол false.
-function save(entries) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-    return true;
-  } catch (error) {
-    return false;
-  }
+function headers(extra) {
+  return Object.assign({
+    'apikey': SUPABASE_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_KEY,
+  }, extra);
 }
 
 function asText(value) {
   return value === undefined || value === null ? '' : String(value);
+}
+
+function formatDate(value) {
+  const date = new Date(value);
+  return isNaN(date) ? '' : date.toLocaleDateString('mn-MN');
 }
 
 // Зочны бичсэн зүйлийг зөвхөн текст болгож (textContent) оруулна — код болж ажиллахгүй.
@@ -49,13 +47,34 @@ function render(entries) {
     const strong = document.createElement('strong');
     strong.textContent = asText(entry.name);
     const small = document.createElement('small');
-    small.textContent = asText(entry.date);
+    small.textContent = formatDate(entry.created_at);
     li.appendChild(strong);
     li.appendChild(document.createTextNode(': ' + asText(entry.text)));
     li.appendChild(small);
     list.appendChild(li);
   }
   count.textContent = '(' + entries.length + ')';
+  status.textContent = entries.length ? '' : 'Одоогоор сэтгэгдэл алга. Эхний сэтгэгдлийг та үлдээгээрэй.';
+}
+
+// Сүүлийн сэтгэгдлүүдийг сангаас татаж харуулна. Амжилттай бол true.
+async function loadComments() {
+  try {
+    const response = await fetch(
+      COMMENTS_URL + '?select=name,text,created_at&order=created_at.desc&limit=' + MAX_SHOWN,
+      { headers: headers() }
+    );
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    const entries = await response.json();
+    if (!Array.isArray(entries)) throw new Error('Буруу хариу');
+    render(entries.filter(function (entry) {
+      return entry && typeof entry === 'object';
+    }));
+    return true;
+  } catch (error) {
+    status.textContent = 'Сэтгэгдлүүдийг ачаалж чадсангүй. Интернэт холболтоо шалгаад хуудсыг дахин ачаална уу.';
+    return false;
+  }
 }
 
 function validate(name, text) {
@@ -78,26 +97,30 @@ function validate(name, text) {
   return !nameError.textContent && !textError.textContent;
 }
 
-form.addEventListener('submit', function (event) {
+form.addEventListener('submit', async function (event) {
   event.preventDefault();
   const name = nameInput.value.trim();
   const text = textInput.value.trim();
   if (!validate(name, text)) return;
 
-  const entries = load();
-  entries.unshift({
-    name: name,
-    text: text,
-    date: new Date().toLocaleDateString('mn-MN'),
-  });
-
-  if (!save(entries)) {
-    formError.textContent = 'Сэтгэгдлийг хадгалж чадсангүй. Browser-ийн хадгалах зай дүүрсэн эсвэл хаалттай байна.';
-    return;
+  submitButton.disabled = true;
+  submitButton.textContent = 'Илгээж байна…';
+  try {
+    const response = await fetch(COMMENTS_URL, {
+      method: 'POST',
+      headers: headers({ 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }),
+      body: JSON.stringify({ name: name, text: text }),
+    });
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    form.reset();
+    await loadComments();
+  } catch (error) {
+    formError.textContent = 'Сэтгэгдлийг илгээж чадсангүй. Интернэт холболтоо шалгаад дахин оролдоно уу.';
+  } finally {
+    submitButton.disabled = false;
+    submitButton.textContent = 'Үлдээх';
   }
-
-  render(entries);
-  form.reset();
 });
 
-render(load());
+status.textContent = 'Сэтгэгдлүүдийг ачаалж байна…';
+loadComments();
