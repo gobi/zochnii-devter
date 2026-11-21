@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Зочны дэвтэр</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <h1>Зочны дэвтэр</h1>
+    <p class="lead">Манай дэлгүүрээр үйлчлүүлсэн сэтгэгдлээ үлдээгээрэй.</p>
+
+    <form id="form">
+      <label for="name">Таны нэр</label>
+      <input id="name" type="text" autocomplete="off" maxlength="50" aria-describedby="name-error">
+      <p id="name-error" class="error" role="alert"></p>
+
+      <label for="text">Сэтгэгдэл</label>
+      <textarea id="text" rows="3" maxlength="500" aria-describedby="text-error"></textarea>
+      <p id="text-error" class="error" role="alert"></p>
+
+      <button type="submit">Үлдээх</button>
+      <p id="form-error" class="error" role="alert"></p>
+    </form>
+
+    <h2>Сэтгэгдлүүд <span id="count"></span></h2>
+    <ul id="list"></ul>
+    <p class="muted">Сэтгэгдэл зөвхөн энэ төхөөрөмжийн browser-т хадгалагдана.</p>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
